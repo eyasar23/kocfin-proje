@@ -204,4 +204,4 @@ def hesapla_teknik_skor(df, t):
 
     final_score = max(0, min(100, score))
     
-    return final_score, rapor
+    return final_score, rapor 

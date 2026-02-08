@@ -133,4 +133,4 @@ TEXTS = {
         'rpt_macd_buy': "MACD Showing Buying Pressure",
         'rpt_macd_sell': "MACD Showing Selling Pressure"
     }
-}
+} 

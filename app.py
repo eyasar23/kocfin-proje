@@ -4,7 +4,7 @@ import pandas as pd
 import plotly.graph_objects as go
 import finance as fn 
 import utils as ut 
-import textwrap
+import textwrap 
 
 # --- 1. AYARLAR & TASARIM ---
 st.set_page_config(page_title="KoçFin Pro", layout="wide", page_icon="📈")
@@ -262,4 +262,4 @@ if sembol:
                     st.markdown(f"<div class='news-card'><a href='{haber.link}' target='_blank' style='font-size:16px; font-weight:600'>{haber.title}</a><div style='font-size:12px; color:#B2B5BE; margin-top:8px'>🗓️ {haber.published[:16]}</div></div>", unsafe_allow_html=True)
 
     except Exception as e:
-        st.error(f"{t['error_sys']} {e}")
+        st.error(f"{t['error_sys']} {e}") 
