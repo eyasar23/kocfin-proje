@@ -1,7 +1,6 @@
 from deep_translator import GoogleTranslator
 import streamlit as st
 
-# --- ÇEVİRİ MOTORU ---
 @st.cache_data
 def metni_cevir(text, target_lang):
     if not text: return ""
@@ -11,7 +10,6 @@ def metni_cevir(text, target_lang):
     except:
         return text
 
-# --- DİL SÖZLÜĞÜ (TEXTS) ---
 TEXTS = {
     'tr': {
         'title': "KoçFin Pro",
@@ -23,8 +21,8 @@ TEXTS = {
         'layer_sma': "SMA (Ortalamalar)",
         'layer_bollinger': "Bollinger Bantları",
         'layer_signals': "AI Sinyalleri",
-        'developer_title': "⚓ Kaptan: Emirhan",
-        'developer_desc': "Duvarların ötesindeki okyanusu keşfet. Veri yalan söylemez.",
+        'developer_title': "💀 Kodun Mimarı: Emirhan",
+        'developer_desc': "Sistemdeki açıkları arıyor. Finansal Matrix'in ötesini gör.",
         'loading': "Piyasa Verileri İşleniyor...",
         'error_data': "Veri bulunamadı veya sembol hatalı.",
         'error_sys': "Sistem Hatası:",
@@ -52,7 +50,27 @@ TEXTS = {
         'profile_title': "🏢 Şirket Profili",
         'no_data': "Veri Yok",
         'buy_signal': "AL",
-        'sell_signal': "SAT"
+        'sell_signal': "SAT",
+        'ai_score_title': "AI Teknik Skoru",
+        'analysis_logic_title': "🧠 Analiz Mantığı",
+        'score_msg_strong_buy': "GÜÇLÜ AL 🚀",
+        'score_msg_buy': "AL 🌱",
+        'score_msg_neutral': "NÖTR ⚖️",
+        'score_msg_sell': "SAT 🔻",
+        'score_msg_strong_sell': "GÜÇLÜ SAT 🆘",
+        
+        # --- RAPOR CÜMLELERİ (YENİ) ---
+        'rpt_rsi_low': "RSI Aşırı Satımda ({:.0f}) - Güçlü Al Sinyali",
+        'rpt_rsi_high': "RSI Aşırı Alımda ({:.0f}) - Kar Satışı Riski",
+        'rpt_rsi_pos': "RSI Pozitif Bölgede (Toparlanma)",
+        'rpt_rsi_neg': "RSI Negatif Bölgede (Baskı Var)",
+        'rpt_bb_low': "Fiyat Bollinger Alt Bandını Deldi (Tepki Gelebilir)",
+        'rpt_bb_high': "Fiyat Bollinger Üst Bandında (Doygunluk)",
+        'rpt_golden_cross': "Golden Cross (Yükseliş Trendi) Aktif",
+        'rpt_sma_pos': "Fiyat Ortalamaların %{:.1f} Üzerinde (Trend Pozitif)",
+        'rpt_sma_neg': "Fiyat Ortalamaların %{:.1f} Altında (Trend Negatif)",
+        'rpt_macd_buy': "MACD Alıcılı Seyrediyor",
+        'rpt_macd_sell': "MACD Satıcılı Seyrediyor"
     },
     'en': {
         'title': "KocFin Pro",
@@ -64,8 +82,8 @@ TEXTS = {
         'layer_sma': "SMA (Moving Averages)",
         'layer_bollinger': "Bollinger Bands",
         'layer_signals': "AI Signals",
-        'developer_title': "⚓ Captain: Emirhan",
-        'developer_desc': "Explore the ocean beyond the walls. Data never lies.",
+        'developer_title': "💀 Architect: Emirhan",
+        'developer_desc': "Hunting glitches in the system. See beyond the Financial Matrix.",
         'loading': "Processing Market Data...",
         'error_data': "Data not found or invalid symbol.",
         'error_sys': "System Error:",
@@ -93,6 +111,26 @@ TEXTS = {
         'profile_title': "🏢 Company Profile",
         'no_data': "No Data",
         'buy_signal': "BUY",
-        'sell_signal': "SELL"
+        'sell_signal': "SELL",
+        'ai_score_title': "AI Technical Score",
+        'analysis_logic_title': "🧠 Analysis Logic",
+        'score_msg_strong_buy': "STRONG BUY 🚀",
+        'score_msg_buy': "BUY 🌱",
+        'score_msg_neutral': "NEUTRAL ⚖️",
+        'score_msg_sell': "SELL 🔻",
+        'score_msg_strong_sell': "STRONG SELL 🆘",
+
+        # --- RAPOR CÜMLELERİ (ENGLISH) ---
+        'rpt_rsi_low': "RSI Oversold ({:.0f}) - Strong Buy Signal",
+        'rpt_rsi_high': "RSI Overbought ({:.0f}) - Profit Taking Risk",
+        'rpt_rsi_pos': "RSI in Positive Zone (Recovery)",
+        'rpt_rsi_neg': "RSI in Negative Zone (Pressure)",
+        'rpt_bb_low': "Price Pierced Lower Bollinger Band (Reaction Likely)",
+        'rpt_bb_high': "Price at Upper Bollinger Band (Saturation)",
+        'rpt_golden_cross': "Golden Cross (Uptrend) Active",
+        'rpt_sma_pos': "Price is {:.1f}% Above Averages (Positive Trend)",
+        'rpt_sma_neg': "Price is {:.1f}% Below Averages (Negative Trend)",
+        'rpt_macd_buy': "MACD Showing Buying Pressure",
+        'rpt_macd_sell': "MACD Showing Selling Pressure"
     }
-} 
+}

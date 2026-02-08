@@ -2,8 +2,9 @@ import streamlit as st
 import yfinance as yf
 import pandas as pd
 import plotly.graph_objects as go
-import finance as fn  # <-- Bak, kendi yazdığımız modülü çağırıyoruz!
-import utils as ut    # <-- Metinleri ve çeviriyi buradan alıyoruz!
+import finance as fn 
+import utils as ut 
+import textwrap
 
 # --- 1. AYARLAR & TASARIM ---
 st.set_page_config(page_title="KoçFin Pro", layout="wide", page_icon="📈")
@@ -29,10 +30,10 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- 2. SIDEBAR VE DİL SEÇİMİ ---
+# --- 2. SIDEBAR ---
 dil_secimi = st.sidebar.radio("🌐 Language / Dil", ["Türkçe", "English"])
 lang = 'tr' if dil_secimi == "Türkçe" else 'en'
-t = ut.TEXTS[lang] # Metinleri utils.py'den çekiyoruz
+t = ut.TEXTS[lang]
 
 st.sidebar.markdown(f"### 📈 {t['sidebar_title']}")
 sembol = st.sidebar.text_input(t['symbol_input'], "THYAO.IS")
@@ -46,12 +47,11 @@ goster_sinyaller = st.sidebar.checkbox(t['layer_signals'], value=True)
 st.sidebar.markdown("---")
 st.sidebar.info(f"{t['developer_title']}\n\n{t['developer_desc']}")
 
-# --- 3. ANA UYGULAMA MANTIĞI ---
+# --- 3. ANA UYGULAMA ---
 if sembol:
     try:
         with st.spinner(t['loading']):
-            # finance.py içindeki fonksiyonları kullanıyoruz (fn.get_...)
-            df = yf.download(sembol, period=periyot, auto_adjust=False)
+            df = yf.download(sembol, period=periyot, auto_adjust=True)
             sirket_bilgisi = fn.get_company_info(sembol)
             haberler, sirket_adi = fn.get_smart_news(sembol, lang)
 
@@ -60,10 +60,11 @@ if sembol:
         else:
             if isinstance(df.columns, pd.MultiIndex): df.columns = df.columns.get_level_values(0)
             
-            # Hesaplamalar finance.py'den geliyor
-            df = fn.duzelt_bolunme_hatasi(df, sembol)
+            # Veri İşleme
+            df = fn.akilli_veri_duzeltici(df)
             df = fn.teknik_indikatorleri_hesapla(df)
             
+            # Başlık Verileri
             current_price = df['Close'].iloc[-1]
             prev_price = df['Close'].iloc[0]
             delta = ((current_price - prev_price) / prev_price) * 100
@@ -76,10 +77,98 @@ if sembol:
 
             tab1, tab2, tab3 = st.tabs([t['tab_tech'], t['tab_fund'], t['tab_news']])
 
+            # --- TAB 1: TEKNİK ANALİZ ---
             with tab1:
+                # ==========================================
+                # 1. BÖLÜM: AI SKOR KARTI & RAPORU (ZİRVEDE)
+                # ==========================================
+                teknik_puan, teknik_rapor = fn.hesapla_teknik_skor(df, t)
+                
+                if teknik_puan >= 75:
+                    skor_renk = "#00E396"
+                    skor_mesaj = t['score_msg_strong_buy']
+                elif 55 <= teknik_puan < 75:
+                    skor_renk = "#008FFB"
+                    skor_mesaj = t['score_msg_buy']
+                elif 45 <= teknik_puan < 55:
+                    skor_renk = "#FEB019"
+                    skor_mesaj = t['score_msg_neutral']
+                elif 25 <= teknik_puan < 45:
+                    skor_renk = "#FF4560"
+                    skor_mesaj = t['score_msg_sell']
+                else:
+                    skor_renk = "#D32F2F"
+                    skor_mesaj = t['score_msg_strong_sell']
+
+                col_score1, col_score2 = st.columns([1, 2])
+                
+                with col_score1:
+                    fig_gauge = go.Figure(go.Indicator(
+                        mode = "gauge+number",
+                        value = int(teknik_puan),
+                        title = {'text': t['ai_score_title'], 'font': {'size': 20, 'color': '#B2B5BE'}},
+                        number = {'font': {'size': 40, 'color': skor_renk}},
+                        gauge = {
+                            'axis': {'range': [None, 100], 'tickwidth': 1, 'tickcolor': "#363a45"},
+                            'bar': {'color': skor_renk},
+                            'bgcolor': "rgba(0,0,0,0)",
+                            'borderwidth': 2,
+                            'bordercolor': "#363a45",
+                            'steps': [
+                                {'range': [0, 25], 'color': 'rgba(255, 69, 96, 0.2)'},
+                                {'range': [25, 45], 'color': 'rgba(255, 69, 96, 0.1)'},
+                                {'range': [45, 55], 'color': 'rgba(254, 176, 25, 0.1)'},
+                                {'range': [55, 100], 'color': 'rgba(0, 227, 150, 0.1)'}
+                            ]
+                        }
+                    ))
+                    fig_gauge.update_layout(height=220, margin=dict(l=10, r=10, t=30, b=10), paper_bgcolor='rgba(0,0,0,0)', font={'color': "#B2B5BE"})
+                    st.plotly_chart(fig_gauge, use_container_width=True)
+                    st.markdown(f"<h3 style='text-align:center; color:{skor_renk}; margin-top:-10px; font-weight:800'>{skor_mesaj}</h3>", unsafe_allow_html=True)
+
+                with col_score2:
+                    st.markdown(f"#### {t['analysis_logic_title']}")
+                    
+                    # CSS ve HTML Hazırlığı
+                    css_style = """
+                    <style>
+                        .cyber-container { max-height: 250px; overflow-y: auto; padding-right: 5px; }
+                        .cyber-container::-webkit-scrollbar { width: 5px; }
+                        .cyber-container::-webkit-scrollbar-track { background: rgba(255,255,255,0.02); }
+                        .cyber-container::-webkit-scrollbar-thumb { background: #363a45; border-radius: 3px; }
+                        .cyber-container::-webkit-scrollbar-thumb:hover { background: #00E396; }
+                        .cyber-item { background: rgba(255, 255, 255, 0.03); border-radius: 8px; padding: 12px; margin-bottom: 8px; display: flex; align-items: center; border: 1px solid rgba(255,255,255,0.05); transition: all 0.3s ease; }
+                        .cyber-item:hover { transform: translateX(5px); background: rgba(255, 255, 255, 0.08); box-shadow: 0 4px 15px rgba(0,0,0,0.2); }
+                        .cyber-icon { font-size: 18px; margin-right: 12px; }
+                        .cyber-text { font-family: 'Inter', sans-serif; font-size: 13px; font-weight: 500; }
+                    </style>
+                    """
+
+                    cards_html = ""
+                    for item in teknik_rapor:
+                        mesaj = item['msg']
+                        durum = item['durum']
+                        if durum == "pozitif":
+                            ikon = "🚀"; renk = "#00E396"; border = f"4px solid {renk}"
+                        elif durum == "negatif":
+                            ikon = "🔻"; renk = "#FF4560"; border = f"4px solid {renk}"
+                        else:
+                            ikon = "💠"; renk = "#B2B5BE"; border = "4px solid #363a45"
+                        
+                        # Tek satırda birleştirme
+                        cards_html += f"<div class='cyber-item' style='border-left: {border};'><div class='cyber-icon'>{ikon}</div><div class='cyber-text' style='color:{renk}'>{mesaj}</div></div>"
+                    
+                    final_html = f"{textwrap.dedent(css_style)}<div class='cyber-container'>{cards_html}</div>"
+                    st.markdown(final_html, unsafe_allow_html=True)
+
+                st.markdown("---") 
+
+                # ==========================================
+                # 2. BÖLÜM: METRİK KARTLARI
+                # ==========================================
                 c1, c2, c3, c4 = st.columns(4)
                 
-                # RSI
+                # RSI Kartı
                 rsi_val = df['RSI'].iloc[-1]
                 rsi_color = "color-neutral"
                 rsi_msg = t['rsi_neutral']
@@ -87,7 +176,7 @@ if sembol:
                 elif rsi_val < 30: rsi_msg = t['rsi_oversold']; rsi_color = "color-up"
                 c1.markdown(f"<div class='metric-card'><div class='metric-label'>{t['rsi_label']}</div><div class='metric-value {rsi_color}'>{rsi_val:.0f}</div><div style='font-size:12px; color:#B2B5BE; margin-top:5px'>{rsi_msg}</div></div>", unsafe_allow_html=True)
                 
-                # Stokastik
+                # Stokastik Kartı
                 stoch_k = df['Stoch_K'].iloc[-1]
                 stoch_color = "color-neutral"
                 stoch_msg = t['stoch_wait']
@@ -95,17 +184,21 @@ if sembol:
                 elif stoch_k < 20: stoch_msg = t['stoch_buy']; stoch_color = "color-up"
                 c2.markdown(f"<div class='metric-card'><div class='metric-label'>{t['stoch_label']}</div><div class='metric-value {stoch_color}'>{stoch_k:.0f}</div><div style='font-size:12px; color:#B2B5BE; margin-top:5px'>{stoch_msg}</div></div>", unsafe_allow_html=True)
                 
-                # Bollinger
+                # Bollinger Kartı
                 fiyat = df['Close'].iloc[-1]
                 bb_upper = df['Bollinger_Upper'].iloc[-1]
                 bb_lower = df['Bollinger_Lower'].iloc[-1]
+                if (bb_upper - bb_lower) != 0:
+                    b_konum = (fiyat - bb_lower) / (bb_upper - bb_lower) * 100
+                else:
+                    b_konum = 50
                 bb_msg = t['bb_normal']
                 bb_color = "color-neutral"
-                if fiyat > bb_upper: bb_msg = t['bb_expensive']; bb_color = "color-down"
-                elif fiyat < bb_lower: bb_msg = t['bb_cheap']; bb_color = "color-up"
-                c3.markdown(f"<div class='metric-card'><div class='metric-label'>{t['bb_label']}</div><div class='metric-value {bb_color}'>{fiyat:.2f}</div><div style='font-size:12px; color:#B2B5BE; margin-top:5px'>{bb_msg}</div></div>", unsafe_allow_html=True)
+                if b_konum > 100: bb_msg = t['bb_expensive']; bb_color = "color-down"
+                elif b_konum < 0: bb_msg = t['bb_cheap']; bb_color = "color-up"
+                c3.markdown(f"<div class='metric-card'><div class='metric-label'>{t['bb_label']}</div><div class='metric-value {bb_color}'>%{b_konum:.0f}</div><div style='font-size:12px; color:#B2B5BE; margin-top:5px'>{bb_msg}</div></div>", unsafe_allow_html=True)
                 
-                # Trend
+                # Trend Kartı
                 macd = df['MACD'].iloc[-1]
                 signal = df['Signal_Line'].iloc[-1]
                 trend_msg = t['trend_up'] if macd > signal else t['trend_down']
@@ -114,6 +207,9 @@ if sembol:
 
                 st.markdown("###")
                 
+                # ==========================================
+                # 3. BÖLÜM: GRAFİK
+                # ==========================================
                 fig = go.Figure()
                 fig.add_trace(go.Candlestick(x=df.index, open=df['Open'], high=df['High'], low=df['Low'], close=df['Close'], name='Fiyat', increasing_line_color='#00E396', decreasing_line_color='#FF4560', showlegend=False))
                 
@@ -126,7 +222,7 @@ if sembol:
                     fig.add_trace(go.Scatter(x=df.index, y=df['SMA_50'], line=dict(color='#008FFB', width=1.5), name='SMA 50'))
 
                 if goster_sinyaller:
-                    sinyaller = fn.al_sat_sinyalleri_yakala(df, t) # finance.py'den çağırıyoruz
+                    sinyaller = fn.al_sat_sinyalleri_yakala(df, t)
                     for tarih, fiyat, tip in sinyaller:
                         color = '#00E396' if tip == t['buy_signal'] else '#FF4560'
                         ay_val = 25 if tip == t['buy_signal'] else -25
@@ -136,6 +232,7 @@ if sembol:
                 config = {'displayModeBar': True, 'displaylogo': False, 'modeBarButtonsToRemove': ['select2d', 'lasso2d', 'autoScale2d']}
                 st.plotly_chart(fig, use_container_width=True, config=config)
 
+            # --- TAB 2: TEMEL VERİLER ---
             with tab2:
                 if sirket_bilgisi:
                     c1, c2, c3 = st.columns(3)
@@ -149,7 +246,7 @@ if sembol:
                     c2.markdown(f"<div class='metric-card'><div class='metric-label'>{t['market_cap']}</div><div class='metric-value color-neutral'>{mcap_str}</div></div>", unsafe_allow_html=True)
                     
                     raw_sektor = sirket_bilgisi.get('sector', 'Bilinmiyor')
-                    sektor_tr = ut.metni_cevir(raw_sektor, lang) # utils.py'den çağırıyoruz
+                    sektor_tr = ut.metni_cevir(raw_sektor, lang)
                     c3.markdown(f"<div class='metric-card'><div class='metric-label'>{t['sector']}</div><div class='metric-value' style='font-size:20px; color:#ECEFF1'>{sektor_tr}</div></div>", unsafe_allow_html=True)
                     
                     raw_ozet = sirket_bilgisi.get('longBusinessSummary', t['no_data'])
@@ -159,6 +256,7 @@ if sembol:
                 else:
                     st.warning(t['error_data'])
 
+            # --- TAB 3: HABERLER ---
             with tab3:
                 for haber in haberler:
                     st.markdown(f"<div class='news-card'><a href='{haber.link}' target='_blank' style='font-size:16px; font-weight:600'>{haber.title}</a><div style='font-size:12px; color:#B2B5BE; margin-top:8px'>🗓️ {haber.published[:16]}</div></div>", unsafe_allow_html=True)
