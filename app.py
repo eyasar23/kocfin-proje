@@ -107,6 +107,14 @@ st.markdown("---")
 st.sidebar.markdown("### 🍂 Panel")
 sembol = st.sidebar.text_input("Varlık Ara", "KONTR.IS")
 periyot = st.sidebar.select_slider("Zaman Dilimi", options=["1mo", "3mo", "6mo", "1y", "2y", "5y"], value="1y")
+st.sidebar.info("💡 İpucu: BIST hisseleri için sonuna .IS ekleyin (Örn: GARAN.IS)")
+st.sidebar.markdown("---")
+st.sidebar.markdown("### 👨‍💻 Geliştirici: Emirhan")
+st.sidebar.info("""
+Bu proje, **Koç Üniversitesi** vizyonuyla; finansal veriyi demokratikleştirmek ve 
+küçük yatırımcıyı 'Bölünme Tuzaklarından' korumak için geliştirilmiştir.
+""")
+st.sidebar.caption("© 2026 KoçFin Serenity - v1.0")
 
 if sembol:
     try:
@@ -194,5 +202,7 @@ if sembol:
                         </div>
                     </a>
                     """, unsafe_allow_html=True)
+      
+    
     except Exception as e:
         st.error(f"Hata: {e}")
