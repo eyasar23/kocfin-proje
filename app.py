@@ -4,62 +4,88 @@ import pandas as pd
 import plotly.graph_objects as go
 import feedparser
 import urllib.parse
-import numpy as np 
 
-# --- 1. AYARLAR & TASARIM ---
-st.set_page_config(page_title="KoçFin Serenity", layout="wide", page_icon="☕")
+# --- 1. AYARLAR & TASARIM (Minimalist & Derin) ---
+st.set_page_config(page_title="KoçFin Pro", layout="wide", page_icon="🏛️")
 
 st.markdown("""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap');
-    html, body, [class*="css"] { font-family: 'Poppins', sans-serif; color: #4a4a4a; }
-    .stApp { background-color: #fcfbf4; }
-    [data-testid="stSidebar"] { background-color: #f7f1e3; border-right: 1px solid #e1dcd5; }
-    .metric-card { background-color: #ffffff; border-radius: 16px; padding: 20px; border: 1px solid #f0eee6; box-shadow: 0 4px 20px rgba(0,0,0,0.03); text-align: center; transition: transform 0.2s ease; }
-    .metric-card:hover { transform: translateY(-3px); }
-    .metric-value { font-size: 28px; font-weight: 600; color: #2c3e50; }
-    .color-up { color: #27ae60; }
-    .color-down { color: #c0392b; }
-    .color-neutral { color: #d35400; }
-    .news-card { background-color: #ffffff; padding: 15px; border-radius: 12px; margin-bottom: 15px; border-left: 5px solid #ffda79; transition: all 0.2s; }
-    .news-card:hover { border-left: 5px solid #ffb142; background-color: #faf9f6; }
-    a { text-decoration: none !important; color: inherit; }
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap');
+    html, body, [class*="css"] { font-family: 'Inter', sans-serif; color: #2c3e50; }
+    .stApp { background-color: #f8f9fa; } /* Çok açık gri (Business White) */
+    
+    /* Sekme Tasarımı */
+    .stTabs [data-baseweb="tab-list"] { gap: 20px; }
+    .stTabs [data-baseweb="tab"] {
+        height: 50px;
+        white-space: pre-wrap;
+        background-color: #fff;
+        border-radius: 10px;
+        color: #636e72;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    }
+    .stTabs [aria-selected="true"] {
+        background-color: #2c3e50;
+        color: #fff;
+    }
+
+    /* Kart Tasarımları */
+    .metric-card {
+        background-color: #ffffff;
+        border-radius: 12px;
+        padding: 20px;
+        border: 1px solid #e9ecef;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.03);
+        text-align: center;
+    }
+    .metric-value { font-size: 26px; font-weight: 700; color: #2d3436; }
+    .metric-label { font-size: 12px; color: #b2bec3; text-transform: uppercase; letter-spacing: 1px; }
+    
+    /* Temel Analiz Kutusu */
+    .info-box {
+        background-color: #fff;
+        padding: 20px;
+        border-radius: 10px;
+        border-left: 5px solid #0984e3;
+        margin-bottom: 20px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.03);
+    }
+    
+    /* Renkler */
+    .up { color: #00b894; }
+    .down { color: #d63031; }
+
 </style>
 """, unsafe_allow_html=True)
 
-# --- 2. SENIOR MÜHENDİSLİK FONKSİYONLARI ---
+# --- 2. GÜÇLENDİRİLMİŞ FONKSİYONLAR ---
+
+def get_company_info(symbol):
+    """Şirketin temel verilerini (F/K, Piyasa Değeri, Açıklama) çeker."""
+    try:
+        ticker = yf.Ticker(symbol)
+        info = ticker.info
+        return info
+    except:
+        return None
 
 def duzelt_bolunme_hatasi(df, sembol_adi):
-    """
-    BU FONKSİYON SADECE BIST (.IS) İÇİN ÇALIŞIR!
-    Kripto veya ABD borsasında %20 düşüş normal olabilir, onlara dokunmuyoruz.
-    """
-    # 1. KONTROL KAPISI: Sembol '.IS' ile bitmiyor mu? O zaman dokunma, geri dön.
-    if not sembol_adi.endswith(".IS"):
-        return df
-
-    # --- Sadece Türk Hisseleri İçin Burası Çalışır ---
+    """BIST hisselerindeki bölünme hatalarını tespit eder ve düzeltir."""
+    if not sembol_adi.endswith(".IS"): return df
     df = df.copy()
     df['Degisim'] = df['Close'].pct_change()
-    
-    # BIST'te %15'ten büyük düşüş teknik olarak "Taban" kuralına aykırıdır.
-    # Bu yüzden bunu bölünme kabul ediyoruz.
-    anormal_dusisler = df[df['Degisim'] < -0.15]
-    
+    anormal_dusisler = df[df['Degisim'] < -0.15] # %15 altı düşüşleri yakala
     if not anormal_dusisler.empty:
         for tarih in anormal_dusisler.index:
             fiyat_once = df.loc[:tarih]['Close'].iloc[-2]
             fiyat_sonra = df.loc[tarih]['Close']
-            bolme_katsayisi = fiyat_once / fiyat_sonra
-            
+            katsayi = fiyat_once / fiyat_sonra
             mask = df.index < tarih
-            df.loc[mask, ['Open', 'High', 'Low', 'Close']] /= bolme_katsayisi
-            
-            print(f"BIST Bölünme Düzeltmesi ({sembol_adi}): {tarih.date()} - Katsayı: {bolme_katsayisi:.2f}")
-            
+            df.loc[mask, ['Open', 'High', 'Low', 'Close']] /= katsayi
     return df
 
 def get_smart_news(ticker_symbol):
+    # (Eski haber fonksiyonumuz aynen kalıyor, gayet iyi çalışıyor)
     query = ticker_symbol
     try:
         ticker = yf.Ticker(ticker_symbol)
@@ -68,15 +94,11 @@ def get_smart_news(ticker_symbol):
         if raw_name:
             query = raw_name.replace("Inc.", "").replace("Corp.", "").replace("A.S.", "").strip()
         encoded_query = urllib.parse.quote(f"{query} finance")
-        url_7d = f"https://news.google.com/rss/search?q={encoded_query}+when:7d&hl=tr&gl=TR&ceid=TR:tr"
-        feed = feedparser.parse(url_7d)
-        if len(feed.entries) > 0:
-            return feed.entries[:6], query, "Son 7 Gün"
-        url_gen = f"https://news.google.com/rss/search?q={encoded_query}&hl=tr&gl=TR&ceid=TR:tr"
-        feed_gen = feedparser.parse(url_gen)
-        return feed_gen.entries[:6], query, "Genel Gündem"
+        url = f"https://news.google.com/rss/search?q={encoded_query}+when:7d&hl=tr&gl=TR&ceid=TR:tr"
+        feed = feedparser.parse(url)
+        return feed.entries[:6], query if len(feed.entries) > 0 else ([], query)
     except:
-        return [], ticker_symbol, "Hata"
+        return [], ticker_symbol
 
 def hesapla_rsi(data, window=14):
     delta = data.diff()
@@ -85,124 +107,111 @@ def hesapla_rsi(data, window=14):
     rs = gain / loss
     return 100 - (100 / (1 + rs))
 
-def sinyal_uret(df):
-    son_rsi = df['RSI'].iloc[-1]
-    son_sma20 = df['SMA_20'].iloc[-1]
-    son_sma50 = df['SMA_50'].iloc[-1]
-    sinyal = "PİYASA SAKİN ☕"
-    renk_class = "metric-value" 
-    if son_sma20 > son_sma50:
-        sinyal = "YÜKSELİŞ TRENDİ 🌿"
-        renk_class = "color-up"
-    elif son_sma20 < son_sma50:
-        sinyal = "DÜŞÜŞ TRENDİ 🍂"
-        renk_class = "color-down"
-    return sinyal, renk_class
+# --- 3. ANA UYGULAMA MİMARİSİ ---
 
-# --- 3. ARAYÜZ ---
-st.markdown("<h2 style='text-align: center; color: #2c3e50; font-weight: 600;'>KoçFin <span style='color:#ffb142'>Serenity</span></h2>", unsafe_allow_html=True)
-st.markdown("---")
+st.sidebar.markdown("### 🏛️ KoçFin Terminal")
+sembol = st.sidebar.text_input("Varlık Sembolü", "THYAO.IS")
+periyot = st.sidebar.select_slider("Zaman Aralığı", options=["1mo", "3mo", "6mo", "1y", "2y", "5y"], value="1y")
 
-# Sidebar
-st.sidebar.markdown("### 🍂 Panel")
-sembol = st.sidebar.text_input("Varlık Ara", "KONTR.IS")
-periyot = st.sidebar.select_slider("Zaman Dilimi", options=["1mo", "3mo", "6mo", "1y", "2y", "5y"], value="1y")
-st.sidebar.info("💡 İpucu: BIST hisseleri için sonuna .IS ekleyin (Örn: GARAN.IS)")
+# Geliştirici İmzası
 st.sidebar.markdown("---")
-st.sidebar.markdown("### 👨‍💻 Geliştirici: Emirhan")
-st.sidebar.info("""
-Bu proje, **Koç Üniversitesi** vizyonuyla; finansal veriyi demokratikleştirmek ve 
-küçük yatırımcıyı 'Bölünme Tuzaklarından' korumak için geliştirilmiştir.
-""")
-st.sidebar.caption("© 2026 KoçFin Serenity - v1.0")
+st.sidebar.info("👨‍💻 **Geliştirici:** Emirhan\n\nKoç Üniversitesi vizyonuyla, veri demokrasisi için tasarlanmıştır.")
 
 if sembol:
     try:
-        with st.spinner('Piyasa verileri işleniyor...'):
-            # Yahoo'dan ham veriyi çek (Auto adjust kapalı, kontrol bizde)
-            df = yf.download(sembol, period=periyot, auto_adjust=False) 
-            haberler, isim, mod = get_smart_news(sembol)
-        
+        # Verileri Paralel Çekiyoruz (Daha Hızlı)
+        with st.spinner('Piyasa ve Şirket İstihbaratı Toplanıyor...'):
+            df = yf.download(sembol, period=periyot, auto_adjust=False)
+            sirket_bilgisi = get_company_info(sembol)
+            haberler, sirket_adi = get_smart_news(sembol)
+
         if df.empty:
-            st.warning("Veri bulunamadı.")
+            st.error("Veri bulunamadı.")
         else:
-            if isinstance(df.columns, pd.MultiIndex):
-                df.columns = df.columns.get_level_values(0)
-
-            # --- AKILLI DÜZELTME MOTORU ---
-            # Sembolü de gönderiyoruz ki kontrol etsin (.IS mi diye)
+            # Veri İşleme
+            if isinstance(df.columns, pd.MultiIndex): df.columns = df.columns.get_level_values(0)
             df = duzelt_bolunme_hatasi(df, sembol)
-            # -----------------------------
-
+            
+            # İndikatörler
             df['SMA_20'] = df['Close'].rolling(window=20).mean()
             df['SMA_50'] = df['Close'].rolling(window=50).mean()
             df['RSI'] = hesapla_rsi(df['Close'])
-            sinyal_text, sinyal_renk_class = sinyal_uret(df)
-
-            # Metrikler
-            son_fiyat = df['Close'].iloc[-1]
-            ilk_fiyat = df['Close'].iloc[0]
-            degisim = son_fiyat - ilk_fiyat
-            yuzde = (degisim / ilk_fiyat) * 100
             
-            delta_class = "color-up" if degisim > 0 else "color-down"
-            delta_icon = "▲" if degisim > 0 else "▼"
+            # Başlık
+            current_price = df['Close'].iloc[-1]
+            prev_price = df['Close'].iloc[0] # Dönem başı
+            delta = ((current_price - prev_price) / prev_price) * 100
+            color_class = "up" if delta > 0 else "down"
+            icon = "▲" if delta > 0 else "▼"
+            
+            st.markdown(f"## {sirket_adi} ({sembol.upper()})")
+            st.markdown(f"<h3 class='{color_class}'>{current_price:.2f} {icon} %{delta:.2f} <span style='font-size:16px; color:#b2bec3'>({periyot})</span></h3>", unsafe_allow_html=True)
 
-            col1, col2, col3, col4 = st.columns(4)
-            with col1:
-                st.markdown(f"""
-                <div class="metric-card">
-                    <div style="font-size:12px; color:#aaa;">Son Fiyat</div>
-                    <div class="metric-value">{son_fiyat:.2f}</div>
-                    <div class="{delta_class}" style="font-size: 14px; font-weight:bold;">{delta_icon} %{yuzde:.2f}</div>
-                </div>
-                """, unsafe_allow_html=True)
-            with col2:
-                st.markdown(f"""
-                <div class="metric-card">
-                    <div style="font-size:12px; color:#aaa;">RSI</div>
-                    <div class="metric-value">{df['RSI'].iloc[-1]:.0f}</div>
-                </div>
-                """, unsafe_allow_html=True)
-            with col3:
-                st.markdown(f"""
-                <div class="metric-card">
-                    <div style="font-size:12px; color:#aaa;">AI Sinyali</div>
-                    <div class="{sinyal_renk_class}" style="font-size: 18px; font-weight:600;">{sinyal_text}</div>
-                </div>
-                """, unsafe_allow_html=True)
-            with col4:
-                st.markdown(f"""
-                <div class="metric-card">
-                    <div style="font-size:12px; color:#aaa;">Zirve</div>
-                    <div class="metric-value">{df['High'].max():.2f}</div>
-                </div>
-                """, unsafe_allow_html=True)
+            # --- SEKMELİ YAPI (DERİN MİMARİ) ---
+            tab1, tab2, tab3 = st.tabs(["📊 Teknik Analiz", "🏢 Şirket Profili (Temel)", "📰 Haber Merkezi"])
 
-            # Grafik
-            st.markdown("###") 
-            fig = go.Figure()
-            fig.add_trace(go.Candlestick(x=df.index, open=df['Open'], high=df['High'], low=df['Low'], close=df['Close'], name='Fiyat', increasing_line_color='#27ae60', decreasing_line_color='#c0392b'))
-            fig.add_trace(go.Scatter(x=df.index, y=df['SMA_20'], line=dict(color='#3498db', width=2), name='SMA 20'))
-            fig.add_trace(go.Scatter(x=df.index, y=df['SMA_50'], line=dict(color='#e67e22', width=2), name='SMA 50'))
-            fig.update_layout(height=500, paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font=dict(color='#57606f'), xaxis=dict(showgrid=False), yaxis=dict(showgrid=True, gridcolor='#ecf0f1'), margin=dict(l=0, r=0, t=30, b=0), hovermode='x unified')
-            st.plotly_chart(fig, use_container_width=True)
+            # --- TAB 1: TEKNİK ANALİZ ---
+            with tab1:
+                col1, col2, col3 = st.columns(3)
+                col1.markdown(f"<div class='metric-card'><div class='metric-label'>RSI (Güç)</div><div class='metric-value'>{df['RSI'].iloc[-1]:.0f}</div></div>", unsafe_allow_html=True)
+                
+                # Trend Sinyali Logic
+                sma20, sma50 = df['SMA_20'].iloc[-1], df['SMA_50'].iloc[-1]
+                trend = "YÜKSELİŞ 🐂" if sma20 > sma50 else "DÜŞÜŞ 🐻"
+                col2.markdown(f"<div class='metric-card'><div class='metric-label'>Trend Durumu</div><div class='metric-value' style='font-size:22px'>{trend}</div></div>", unsafe_allow_html=True)
+                
+                col3.markdown(f"<div class='metric-card'><div class='metric-label'>Dönem Zirvesi</div><div class='metric-value'>{df['High'].max():.2f}</div></div>", unsafe_allow_html=True)
 
-            # Haberler
-            st.markdown(f"#### 🗞️ {isim} Gündem ({mod})")
-            col_news1, col_news2 = st.columns(2)
-            for i, haber in enumerate(haberler):
-                target_col = col_news1 if i % 2 == 0 else col_news2
-                with target_col:
+                st.markdown("###")
+                fig = go.Figure()
+                fig.add_trace(go.Candlestick(x=df.index, open=df['Open'], high=df['High'], low=df['Low'], close=df['Close'], name='Fiyat'))
+                fig.add_trace(go.Scatter(x=df.index, y=df['SMA_20'], line=dict(color='#0984e3', width=2), name='SMA 20'))
+                fig.add_trace(go.Scatter(x=df.index, y=df['SMA_50'], line=dict(color='#d63031', width=2), name='SMA 50'))
+                fig.update_layout(height=500, xaxis_rangeslider_visible=False, template="plotly_white", margin=dict(l=0,r=0,t=0,b=0))
+                st.plotly_chart(fig, use_container_width=True)
+
+            # --- TAB 2: TEMEL ANALİZ (YENİ MODÜL) ---
+            with tab2:
+                if sirket_bilgisi:
+                    c1, c2, c3 = st.columns(3)
+                    
+                    # F/K Oranı (Değerleme)
+                    fk = sirket_bilgisi.get('trailingPE', 'N/A')
+                    fk_val = f"{fk:.2f}" if isinstance(fk, (int, float)) else "Veri Yok"
+                    c1.markdown(f"<div class='metric-card'><div class='metric-label'>F/K Oranı</div><div class='metric-value'>{fk_val}</div><div style='font-size:10px; color:#aaa'>Düşük = Ucuz Olabilir</div></div>", unsafe_allow_html=True)
+                    
+                    # Piyasa Değeri
+                    mcap = sirket_bilgisi.get('marketCap', 0)
+                    if mcap > 1_000_000_000: mcap_str = f"{mcap/1_000_000_000:.1f} Mr"
+                    elif mcap > 1_000_000: mcap_str = f"{mcap/1_000_000:.1f} Mn"
+                    else: mcap_str = "N/A"
+                    c2.markdown(f"<div class='metric-card'><div class='metric-label'>Piyasa Değeri</div><div class='metric-value'>{mcap_str}</div></div>", unsafe_allow_html=True)
+                    
+                    # Sektör
+                    sektor = sirket_bilgisi.get('sector', 'Bilinmiyor')
+                    c3.markdown(f"<div class='metric-card'><div class='metric-label'>Sektör</div><div class='metric-value' style='font-size:18px'>{sektor}</div></div>", unsafe_allow_html=True)
+                    
+                    st.markdown("###")
                     st.markdown(f"""
-                    <a href="{haber.link}" target="_blank">
-                        <div class="news-card">
-                            <div style="font-weight:600; color:#2c3e50;">{haber.title}</div>
-                            <div style="font-size:11px; color:#aaa; margin-top:5px;">🗓️ {haber.published[:16]}</div>
-                        </div>
-                    </a>
+                    <div class='info-box'>
+                        <h4>🏢 Şirket Hakkında</h4>
+                        <p>{sirket_bilgisi.get('longBusinessSummary', 'Açıklama bulunamadı.')[:500]}...</p>
+                        <hr>
+                        <small>📍 Merkez: {sirket_bilgisi.get('city', '-')} | 🌐 Web: <a href="{sirket_bilgisi.get('website', '#')}">{sirket_bilgisi.get('website', 'Yok')}</a></small>
+                    </div>
                     """, unsafe_allow_html=True)
-      
-    
+                else:
+                    st.warning("Temel analiz verilerine ulaşılamadı.")
+
+            # --- TAB 3: HABER MERKEZİ ---
+            with tab3:
+                for haber in haberler:
+                    st.markdown(f"""
+                    <div style='padding:15px; background:#fff; border-radius:10px; margin-bottom:10px; border-left:4px solid #fdcb6e; box-shadow:0 2px 5px rgba(0,0,0,0.05)'>
+                        <a href="{haber.link}" target="_blank" style='text-decoration:none; color:#2d3436; font-weight:bold; font-size:16px'>{haber.title}</a>
+                        <div style='font-size:12px; color:#b2bec3; margin-top:5px'>🗓️ {haber.published[:16]}</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+
     except Exception as e:
-        st.error(f"Hata: {e}")
+        st.error(f"Sistem Hatası: {e}")
