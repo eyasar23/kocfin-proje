@@ -9,7 +9,7 @@
 
 ![Status](https://img.shields.io/badge/Status-Live-success)
 ![Language](https://img.shields.io/badge/Language-English%20%7C%20Turkish-blue)
-![Tech](https://img.shields.io/badge/Powered%20By-AI%20%26%20Math-orange)
+
 
 ### 🤔 What is KoçFin Pro?
 **Stop guessing, start knowing.**
