@@ -4,9 +4,8 @@ import pandas as pd
 import plotly.graph_objects as go
 import finance as fn 
 import utils as ut 
-import textwrap 
+import textwrap
 
-# --- 1. AYARLAR & TASARIM ---
 st.set_page_config(page_title="KoçFin Pro", layout="wide", page_icon="📈")
 
 st.markdown("""
@@ -30,24 +29,31 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- 2. SIDEBAR ---
 dil_secimi = st.sidebar.radio("🌐 Language / Dil", ["Türkçe", "English"])
 lang = 'tr' if dil_secimi == "Türkçe" else 'en'
 t = ut.TEXTS[lang]
 
 st.sidebar.markdown(f"### 📈 {t['sidebar_title']}")
-sembol = st.sidebar.text_input(t['symbol_input'], "THYAO.IS")
+
+varlik_listesi = list(ut.ASSETS_DB.keys())
+secilen_varlik = st.sidebar.selectbox(t['symbol_select'], varlik_listesi, index=1)
+
+if secilen_varlik == "🔍 Manuel Giriş Yap / Diğer...":
+    sembol = st.sidebar.text_input(t['symbol_manual'], "THYAO.IS")
+else:
+    sembol = ut.ASSETS_DB[secilen_varlik]
+
 periyot = st.sidebar.select_slider(t['period_input'], options=["3mo", "6mo", "1y", "2y", "5y"], value="1y")
 
 st.sidebar.markdown(f"### {t['layers']}")
 goster_sma = st.sidebar.checkbox(t['layer_sma'], value=True)
+goster_ema = st.sidebar.checkbox(t['layer_ema'], value=True)
 goster_bollinger = st.sidebar.checkbox(t['layer_bollinger'], value=True)
 goster_sinyaller = st.sidebar.checkbox(t['layer_signals'], value=True)
 
 st.sidebar.markdown("---")
 st.sidebar.info(f"{t['developer_title']}\n\n{t['developer_desc']}")
 
-# --- 3. ANA UYGULAMA ---
 if sembol:
     try:
         with st.spinner(t['loading']):
@@ -60,11 +66,9 @@ if sembol:
         else:
             if isinstance(df.columns, pd.MultiIndex): df.columns = df.columns.get_level_values(0)
             
-            # Veri İşleme
             df = fn.akilli_veri_duzeltici(df)
             df = fn.teknik_indikatorleri_hesapla(df)
             
-            # Başlık Verileri
             current_price = df['Close'].iloc[-1]
             prev_price = df['Close'].iloc[0]
             delta = ((current_price - prev_price) / prev_price) * 100
@@ -77,11 +81,7 @@ if sembol:
 
             tab1, tab2, tab3 = st.tabs([t['tab_tech'], t['tab_fund'], t['tab_news']])
 
-            # --- TAB 1: TEKNİK ANALİZ ---
             with tab1:
-                # ==========================================
-                # 1. BÖLÜM: AI SKOR KARTI & RAPORU (ZİRVEDE)
-                # ==========================================
                 teknik_puan, teknik_rapor = fn.hesapla_teknik_skor(df, t)
                 
                 if teknik_puan >= 75:
@@ -129,7 +129,6 @@ if sembol:
                 with col_score2:
                     st.markdown(f"#### {t['analysis_logic_title']}")
                     
-                    # CSS ve HTML Hazırlığı
                     css_style = """
                     <style>
                         .cyber-container { max-height: 250px; overflow-y: auto; padding-right: 5px; }
@@ -155,7 +154,6 @@ if sembol:
                         else:
                             ikon = "💠"; renk = "#B2B5BE"; border = "4px solid #363a45"
                         
-                        # Tek satırda birleştirme
                         cards_html += f"<div class='cyber-item' style='border-left: {border};'><div class='cyber-icon'>{ikon}</div><div class='cyber-text' style='color:{renk}'>{mesaj}</div></div>"
                     
                     final_html = f"{textwrap.dedent(css_style)}<div class='cyber-container'>{cards_html}</div>"
@@ -163,12 +161,8 @@ if sembol:
 
                 st.markdown("---") 
 
-                # ==========================================
-                # 2. BÖLÜM: METRİK KARTLARI
-                # ==========================================
                 c1, c2, c3, c4 = st.columns(4)
                 
-                # RSI Kartı
                 rsi_val = df['RSI'].iloc[-1]
                 rsi_color = "color-neutral"
                 rsi_msg = t['rsi_neutral']
@@ -176,7 +170,6 @@ if sembol:
                 elif rsi_val < 30: rsi_msg = t['rsi_oversold']; rsi_color = "color-up"
                 c1.markdown(f"<div class='metric-card'><div class='metric-label'>{t['rsi_label']}</div><div class='metric-value {rsi_color}'>{rsi_val:.0f}</div><div style='font-size:12px; color:#B2B5BE; margin-top:5px'>{rsi_msg}</div></div>", unsafe_allow_html=True)
                 
-                # Stokastik Kartı
                 stoch_k = df['Stoch_K'].iloc[-1]
                 stoch_color = "color-neutral"
                 stoch_msg = t['stoch_wait']
@@ -184,7 +177,6 @@ if sembol:
                 elif stoch_k < 20: stoch_msg = t['stoch_buy']; stoch_color = "color-up"
                 c2.markdown(f"<div class='metric-card'><div class='metric-label'>{t['stoch_label']}</div><div class='metric-value {stoch_color}'>{stoch_k:.0f}</div><div style='font-size:12px; color:#B2B5BE; margin-top:5px'>{stoch_msg}</div></div>", unsafe_allow_html=True)
                 
-                # Bollinger Kartı
                 fiyat = df['Close'].iloc[-1]
                 bb_upper = df['Bollinger_Upper'].iloc[-1]
                 bb_lower = df['Bollinger_Lower'].iloc[-1]
@@ -198,7 +190,6 @@ if sembol:
                 elif b_konum < 0: bb_msg = t['bb_cheap']; bb_color = "color-up"
                 c3.markdown(f"<div class='metric-card'><div class='metric-label'>{t['bb_label']}</div><div class='metric-value {bb_color}'>%{b_konum:.0f}</div><div style='font-size:12px; color:#B2B5BE; margin-top:5px'>{bb_msg}</div></div>", unsafe_allow_html=True)
                 
-                # Trend Kartı
                 macd = df['MACD'].iloc[-1]
                 signal = df['Signal_Line'].iloc[-1]
                 trend_msg = t['trend_up'] if macd > signal else t['trend_down']
@@ -207,9 +198,6 @@ if sembol:
 
                 st.markdown("###")
                 
-                # ==========================================
-                # 3. BÖLÜM: GRAFİK
-                # ==========================================
                 fig = go.Figure()
                 fig.add_trace(go.Candlestick(x=df.index, open=df['Open'], high=df['High'], low=df['Low'], close=df['Close'], name='Fiyat', increasing_line_color='#00E396', decreasing_line_color='#FF4560', showlegend=False))
                 
@@ -221,18 +209,90 @@ if sembol:
                     fig.add_trace(go.Scatter(x=df.index, y=df['SMA_20'], line=dict(color='#FEB019', width=1.5), name='SMA 20'))
                     fig.add_trace(go.Scatter(x=df.index, y=df['SMA_50'], line=dict(color='#008FFB', width=1.5), name='SMA 50'))
 
+                if goster_ema:
+                    fig.add_trace(go.Scatter(x=df.index, y=df['EMA_100'], line=dict(color='#9b59b6', width=2), name='EMA 100'))
+
                 if goster_sinyaller:
                     sinyaller = fn.al_sat_sinyalleri_yakala(df, t)
                     for tarih, fiyat, tip in sinyaller:
-                        color = '#00E396' if tip == t['buy_signal'] else '#FF4560'
-                        ay_val = 25 if tip == t['buy_signal'] else -25
-                        fig.add_annotation(x=tarih, y=fiyat, text=tip, showarrow=True, arrowhead=2, arrowcolor=color, ay=ay_val, bgcolor=color, font=dict(color="#ffffff", size=9))
+                        bg_color = '#363a45'
+                        border_color = '#B2B5BE'
+                        text_color = '#ffffff'
+                        font_size = 14
+                        arrow_head = 1
+                        ay_val = 0
 
-                fig.update_layout(height=550, dragmode='pan', hovermode='x unified', paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(255,255,255,0.02)', margin=dict(l=5, r=5, t=10, b=10), legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1, font=dict(color='#B2B5BE')), xaxis=dict(showgrid=True, gridcolor='#2a2e39', rangeslider=dict(visible=False)), yaxis=dict(showgrid=True, gridcolor='#2a2e39', side='right'), font=dict(color='#B2B5BE'))
+                        if tip == t.get('dip_buy', '💎'): 
+                            bg_color = '#00E396'
+                            border_color = '#00E396'
+                            font_size = 18
+                            arrow_head = 2
+                            ay_val = 35 
+                            
+                        elif tip == t.get('peak_sell', '⛔'):
+                            bg_color = '#FF4560'
+                            border_color = '#FF4560'
+                            font_size = 18
+                            arrow_head = 2
+                            ay_val = -35
+                            
+                        elif tip == t['buy_signal']:
+                            bg_color = 'rgba(0, 227, 150, 0.2)'
+                            border_color = '#00E396'
+                            text_color = '#00E396'
+                            ay_val = 25
+                            
+                        elif tip == t['sell_signal']:
+                            bg_color = 'rgba(255, 69, 96, 0.2)'
+                            border_color = '#FF4560'
+                            text_color = '#FF4560'
+                            ay_val = -25
+
+                        fig.add_annotation(
+                            x=tarih, y=fiyat, 
+                            text=f"<b>{tip}</b>",
+                            showarrow=True, 
+                            arrowhead=arrow_head, 
+                            arrowwidth=1.5, 
+                            arrowcolor=border_color, 
+                            ay=ay_val, 
+                            bgcolor=bg_color, 
+                            borderwidth=1, 
+                            bordercolor=border_color,
+                            opacity=1,
+                            font=dict(color=text_color, size=font_size)
+                        )
+
+                tarih_format = "%d.%m.%Y" if lang == 'tr' else "%d %b %Y"
+
+                fig.update_layout(
+                    height=550, 
+                    dragmode='pan', 
+                    hovermode='x unified', 
+                    paper_bgcolor='rgba(0,0,0,0)', 
+                    plot_bgcolor='rgba(255,255,255,0.02)', 
+                    margin=dict(l=5, r=5, t=10, b=10), 
+                    legend=dict(
+                        orientation="h", 
+                        yanchor="bottom", 
+                        y=1.02, 
+                        xanchor="left", 
+                        x=0, 
+                        font=dict(color='#B2B5BE')
+                    ), 
+                    xaxis=dict(
+                        showgrid=True, 
+                        gridcolor='#2a2e39', 
+                        rangeslider=dict(visible=False),
+                        tickformat=tarih_format
+                    ), 
+                    yaxis=dict(showgrid=True, gridcolor='#2a2e39', side='right'), 
+                    font=dict(color='#B2B5BE')
+                )
+                
                 config = {'displayModeBar': True, 'displaylogo': False, 'modeBarButtonsToRemove': ['select2d', 'lasso2d', 'autoScale2d']}
                 st.plotly_chart(fig, use_container_width=True, config=config)
 
-            # --- TAB 2: TEMEL VERİLER ---
             with tab2:
                 if sirket_bilgisi:
                     c1, c2, c3 = st.columns(3)
@@ -256,10 +316,9 @@ if sembol:
                 else:
                     st.warning(t['error_data'])
 
-            # --- TAB 3: HABERLER ---
             with tab3:
                 for haber in haberler:
                     st.markdown(f"<div class='news-card'><a href='{haber.link}' target='_blank' style='font-size:16px; font-weight:600'>{haber.title}</a><div style='font-size:12px; color:#B2B5BE; margin-top:8px'>🗓️ {haber.published[:16]}</div></div>", unsafe_allow_html=True)
 
     except Exception as e:
-        st.error(f"{t['error_sys']} {e}") 
+        st.error(f"{t['error_sys']} {e}")
