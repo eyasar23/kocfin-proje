@@ -168,8 +168,6 @@ def hesapla_teknik_skor(df, t):
         score -= 10
         rapor.append({"msg": t['rpt_ema_neg'], "durum": "negatif"})
 
-   
-    
     if 'MACD' in son and 'Signal_Line' in son:
         macd_hist = son['MACD'] - son['Signal_Line']
         if macd_hist > 0:
@@ -180,4 +178,4 @@ def hesapla_teknik_skor(df, t):
             rapor.append({"msg": t['rpt_macd_sell'], "durum": "negatif"})
 
     final_score = max(0, min(100, score))
-    return final_score, rapor
+    return final_score, rapor    

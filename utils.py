@@ -194,6 +194,5 @@ TEXTS = {
         'rpt_macd_sell': "MACD Sell Signal",
         'rpt_ema_pos': "Price Above EMA 100 (Bull Trend) 🐂",
         'rpt_ema_neg': "Price Below EMA 100 (Bear Trend) 🐻"
-    
     }
 }
