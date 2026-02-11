@@ -56,3 +56,7 @@ Supports everything from **BIST 100** to **Crypto (BTC, ETH)** and **US Stocks**
 ---
 
 ## 📸 App Gallery
+<img width="1916" height="753" alt="Ekran görüntüsü 2026-02-12 002525" src="https://github.com/user-attachments/assets/f3ee524b-339d-48e3-96e3-555a2895a160" />
+<img width="1497" height="721" alt="Ekran görüntüsü 2026-02-12 002539" src="https://github.com/user-attachments/assets/bbf1ab79-24fe-4ab4-8376-fde0697303d3" />
+<img width="1491" height="833" alt="Ekran görüntüsü 2026-02-12 002602" src="https://github.com/user-attachments/assets/bf4c35ff-7173-46ce-8735-bddb9693a3fb" />
+<img width="1498" height="724" alt="Ekran görüntüsü 2026-02-12 002613" src="https://github.com/user-attachments/assets/018eea8d-279f-4e0b-9f9f-0c9d041352c2" />
